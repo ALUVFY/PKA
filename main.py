@@ -106,6 +106,40 @@ if uploaded_file:
                 height=120
             )
 
+        # 用户问题输入
+        query = st.text_input(
+            "请输入问题"
+        )
+
+        if query:
+
+            with st.spinner("正在检索知识库..."):
+
+                # 创建检索器
+                retriever = vector_db.as_retriever(
+                    search_type="similarity_score_threshold",
+                    search_kwargs={
+                        "score_threshold":0.5,
+                        "k":5
+                    }
+                )
+
+                # 搜索最相关文本
+                results = retriever.invoke(query)
+
+            st.success(
+                f"找到 {len(results)} 条相关内容"
+            )
+
+            # 展示检索结果
+            for i, doc in enumerate(results):
+
+                st.text_area(
+                    f"检索结果 {i+1}",
+                    doc.page_content,
+                    height=150
+                )
+
     except Exception as e:
 
         st.error(
