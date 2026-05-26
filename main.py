@@ -5,6 +5,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from sentence_transformers import CrossEncoder
 import tempfile
 import os
 
@@ -117,25 +118,46 @@ if uploaded_file:
 
                 # 创建检索器
                 retriever = vector_db.as_retriever(
-                    search_type="similarity_score_threshold",
-                    search_kwargs={
-                        "score_threshold":0.5,
-                        "k":5
-                    }
+                    search_kwargs={"k":10}
                 )
 
                 # 搜索最相关文本
-                results = retriever.invoke(query)
+                docs = retriever.invoke(query)
+
+            with st.spinner("正在进行二次排序..."):
+                # rerank的排序模型
+                reranker = CrossEncoder(
+                    "BAAI/bge-reranker-base"
+                )
+
+                pairs = [
+                    [query, doc.page_content]
+                    for doc in docs
+                ]
+                #计算得分
+                scores = reranker.predict(
+                    pairs
+                )
+                # 排序
+                reranked_results = sorted(
+                    zip(scores, docs),
+                    reverse=True,
+                    key=lambda x:x[0]
+                )
+                #取出来前三
+                top_docs = [
+                    doc
+                    for score, doc in reranked_results[:3]
+                ]
 
             st.success(
-                f"找到 {len(results)} 条相关内容"
+                f"找到 {len(top_docs)} 条相关内容"
             )
-
-            # 展示检索结果
-            for i, doc in enumerate(results):
+            #展示结果
+            for i, doc in enumerate(top_docs):
 
                 st.text_area(
-                    f"检索结果 {i+1}",
+                    f"检索结果{i+1}",
                     doc.page_content,
                     height=150
                 )
