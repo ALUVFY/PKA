@@ -62,8 +62,8 @@ if uploaded_file:
 
         # 文本切块
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=100
+            chunk_size=250,
+            chunk_overlap=50
         )
 
         chunks = splitter.split_text(text)
@@ -81,7 +81,7 @@ if uploaded_file:
         with st.spinner("正在加载Embedding模型..."):
 
             embeddings = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2"
+                model_name="BAAI/bge-base-zh-v1.5"
             )
 
         with st.spinner("正在创建向量数据库..."):
