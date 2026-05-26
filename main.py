@@ -82,7 +82,10 @@ if uploaded_file:
         with st.spinner("正在加载Embedding模型..."):
 
             embeddings = HuggingFaceEmbeddings(
-                model_name="BAAI/bge-base-zh-v1.5"
+                model_name="BAAI/bge-base-zh-v1.5",
+                model_kwargs={
+                    "local_files_only":True   #注意第一次缓存到本地之后，后面的rerank也是，限制只在本地寻找
+                }
             )
 
         with st.spinner("正在创建向量数据库..."):
@@ -112,23 +115,29 @@ if uploaded_file:
             "请输入问题"
         )
 
+        # 在提问外面加载排序模型避免重复加载
+        @st.cache_resource
+        def load_reranker():
+            return CrossEncoder(
+                "BAAI/bge-reranker-base",
+                local_files_only=True
+            )
+
+        reranker = load_reranker()
+
         if query:
 
             with st.spinner("正在检索知识库..."):
 
-                # 创建检索器
+                # 创建检索器  从top5中选3
                 retriever = vector_db.as_retriever(
-                    search_kwargs={"k":10}
+                    search_kwargs={"k":5}
                 )
 
                 # 搜索最相关文本
                 docs = retriever.invoke(query)
 
             with st.spinner("正在进行二次排序..."):
-                # rerank的排序模型
-                reranker = CrossEncoder(
-                    "BAAI/bge-reranker-base"
-                )
 
                 pairs = [
                     [query, doc.page_content]
