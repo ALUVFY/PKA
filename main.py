@@ -2,6 +2,9 @@ import streamlit as st
 from docx import Document
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_core.documents import Document
 import tempfile
 import os
 
@@ -67,6 +70,31 @@ if uploaded_file:
 
         st.success(
             f"切块成功，共 {len(chunks)} 块"
+        )
+
+        # 转文档对象
+        documents = [
+            Document(page_content=chunk)
+            for chunk in chunks
+        ]
+
+        with st.spinner("正在加载Embedding模型..."):
+
+            embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            )
+
+        with st.spinner("正在创建向量数据库..."):
+
+            vector_db = FAISS.from_documents(
+                documents,
+                embeddings
+            )
+
+        st.success("向量数据库构建成功")
+
+        st.write(
+            f"当前文本块数量：{len(documents)}"
         )
 
         # 展示前5个文本块
